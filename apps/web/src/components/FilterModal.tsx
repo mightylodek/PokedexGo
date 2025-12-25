@@ -187,12 +187,11 @@ export function FilterModal({ isOpen, onClose, onApply, allPokemon, apiUrl, curr
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Type name or pokemon number..."
-              className="w-full px-4 py-2 rounded border theme-border theme-bg-card theme-text-primary focus:outline-none focus:ring-2 focus:ring-offset-2"
+              className="w-full px-4 py-2 rounded border theme-border theme-bg-card theme-text-primary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--accent-primary)]"
               style={{
                 borderColor: 'var(--border-color)',
                 backgroundColor: 'var(--bg-card)',
                 color: 'var(--text-primary)',
-                focusRingColor: 'var(--accent-primary)',
               }}
               autoFocus
             />
@@ -278,11 +277,8 @@ export function FilterModal({ isOpen, onClose, onApply, allPokemon, apiUrl, curr
                       key={type.id}
                       onClick={() => toggleType(type.name)}
                       className={`transition-all ${
-                        isSelected ? 'ring-2 ring-offset-2' : ''
+                        isSelected ? 'ring-2 ring-offset-2 ring-[var(--accent-primary)]' : ''
                       }`}
-                      style={{
-                        ringColor: isSelected ? 'var(--accent-primary)' : 'transparent',
-                      }}
                     >
                       <TypeBadge typeName={type.name} />
                     </button>
