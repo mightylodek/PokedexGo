@@ -1,0 +1,421 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// Core Catalog Tables
+// ============================================
+
+model Type {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  primaryPokemonSpecies   PokemonSpecies[] @relation("PrimaryType")
+  secondaryPokemonSpecies PokemonSpecies[] @relation("SecondaryType")
+  moves                   Move[]
+}
+
+model Region {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  pokemonSpecies PokemonSpecies[]
+}
+
+model PokemonSpecies {
+  id              String   @id @default(uuid())
+  dexNumber       Int      @unique
+  name            String
+  generation      Int
+  primaryTypeId   String
+  secondaryTypeId String?
+  regionId        String?
+  isLegendary     Boolean  @default(false)
+  isMythical      Boolean  @default(false)
+  familyId        String?  // Evolution family identifier from Game Master
+  evolutionId     String?  // Evolution identifier
+  parentPokemonId String?  // Parent pokemon ID in evolution chain
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  primaryType   Type    @relation("PrimaryType", fields: [primaryTypeId], references: [id])
+  secondaryType Type?   @relation("SecondaryType", fields: [secondaryTypeId], references: [id])
+  region        Region? @relation(fields: [regionId], references: [id])
+  forms         PokemonForm[]
+  
+  // Evolution relationships
+  parentSpecies   PokemonSpecies? @relation("EvolutionChain", fields: [parentPokemonId], references: [id])
+  childSpecies    PokemonSpecies[] @relation("EvolutionChain")
+}
+
+model PokemonForm {
+  id            String   @id @default(uuid())
+  speciesId     String
+  formKey       String   // NORMAL, ALOLAN, SHADOW, COSTUME_X, etc.
+  formName      String
+  isDefault     Boolean  @default(false)
+  isShinyAvailable Boolean @default(false)
+  baseAttack    Int
+  baseDefense   Int
+  baseStamina   Int
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  species              PokemonSpecies        @relation(fields: [speciesId], references: [id], onDelete: Cascade)
+  moves                PokemonFormMove[]
+  assets               PokemonFormAsset[]
+  userFavorites        UserFavorite[]
+  userPokemonInstances UserPokemonInstance[]
+  sharedListEntries    SharedListEntry[]
+
+  @@unique([speciesId, formKey])
+  @@index([speciesId])
+}
+
+enum MoveCategory {
+  FAST
+  CHARGED
+}
+
+enum LearnMethod {
+  FAST
+  CHARGED
+  ELITE_FAST
+  ELITE_CHARGED
+  LEGACY
+}
+
+model Move {
+  id          String       @id @default(uuid())
+  moveKey     String       @unique
+  name        String
+  typeId      String
+  category    MoveCategory
+  power       Int
+  energyDelta Int          // Positive for charged moves, negative for fast moves
+  durationMs  Int
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  // Relations
+  type            Type              @relation(fields: [typeId], references: [id])
+  pokemonFormMoves PokemonFormMove[]
+}
+
+model PokemonFormMove {
+  id          String      @id @default(uuid())
+  formId      String
+  moveId      String
+  learnMethod LearnMethod
+  createdAt   DateTime    @default(now())
+
+  // Relations
+  form PokemonForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+  move Move       @relation(fields: [moveId], references: [id], onDelete: Cascade)
+
+  @@unique([formId, moveId, learnMethod])
+  @@index([formId])
+  @@index([moveId])
+}
+
+// ============================================
+// Assets
+// ============================================
+
+enum AssetKind {
+  SPRITE_STATIC
+  SPRITE_ANIMATED
+  ICON
+}
+
+enum AssetPurpose {
+  THUMBNAIL
+  DETAIL
+  ANIMATED
+}
+
+model Asset {
+  id        String   @id @default(uuid())
+  kind      AssetKind
+  mimeType  String
+  path      String
+  source    String
+  sha256    String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  pokemonFormAssets PokemonFormAsset[]
+}
+
+model PokemonFormAsset {
+  id        String       @id @default(uuid())
+  formId    String
+  assetId   String
+  purpose   AssetPurpose
+  createdAt DateTime     @default(now())
+
+  // Relations
+  form  PokemonForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+  asset Asset      @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@unique([formId, assetId, purpose])
+  @@index([formId])
+}
+
+// ============================================
+// Users & Authentication
+// ============================================
+
+model User {
+  id          String   @id @default(uuid())
+  email       String   @unique
+  passwordHash String
+  displayName String?
+  theme       String?  @default("default") // User theme preference: 'default', 'horizons', 'scarlet-violet'
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  refreshTokens      RefreshToken[]
+  favorites          UserFavorite[]
+  pokemonInstances   UserPokemonInstance[]
+  tags               Tag[]
+  friendshipsAsRequester Friendship[] @relation("Requester")
+  friendshipsAsAddressee Friendship[] @relation("Addressee")
+  ownedSharedLists   SharedList[]
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+}
+
+// ============================================
+// User Pokédex
+// ============================================
+
+model UserFavorite {
+  id        String   @id @default(uuid())
+  userId    String
+  formId    String
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  form PokemonForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, formId])
+  @@index([userId])
+}
+
+model UserPokemonInstance {
+  id          String   @id @default(uuid())
+  userId      String
+  formId      String
+  nickname    String?
+  levelTimes2 Int      // Level * 2 (e.g., 40 = level 20)
+  ivAtk       Int      // 0-15
+  ivDef       Int      // 0-15
+  ivSta       Int      // 0-15
+  cp          Int?     // Computed or cached
+  hp          Int?     // Computed or cached
+  notes       String?
+  favorite    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  form PokemonForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+  tags UserPokemonTag[]
+  sharedListEntries SharedListEntry[]
+
+  @@index([userId])
+  @@index([formId])
+}
+
+model Tag {
+  id        String   @id @default(uuid())
+  userId    String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pokemonTags     UserPokemonTag[]
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model UserPokemonTag {
+  id                      String   @id @default(uuid())
+  userPokemonInstanceId   String
+  tagId                   String
+  createdAt               DateTime @default(now())
+
+  // Relations
+  pokemonInstance UserPokemonInstance @relation(fields: [userPokemonInstanceId], references: [id], onDelete: Cascade)
+  tag             Tag                @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([userPokemonInstanceId, tagId])
+  @@index([userPokemonInstanceId])
+}
+
+// ============================================
+// Social / Sharing
+// ============================================
+
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+  BLOCKED
+}
+
+model Friendship {
+  id          String           @id @default(uuid())
+  requesterId String
+  addresseeId String
+  status      FriendshipStatus @default(PENDING)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  // Relations
+  requester User @relation("Requester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addressee User @relation("Addressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterId, addresseeId])
+  @@index([requesterId])
+  @@index([addresseeId])
+}
+
+model SharedList {
+  id              String   @id @default(uuid())
+  ownerId         String
+  name            String
+  isPublicToFriends Boolean @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  owner   User              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  entries SharedListEntry[]
+
+  @@index([ownerId])
+}
+
+model SharedListEntry {
+  id                    String   @id @default(uuid())
+  sharedListId          String
+  formId                String?
+  userPokemonInstanceId String?
+  createdAt             DateTime @default(now())
+
+  // Relations
+  sharedList        SharedList        @relation(fields: [sharedListId], references: [id], onDelete: Cascade)
+  form              PokemonForm?      @relation(fields: [formId], references: [id], onDelete: Cascade)
+  pokemonInstance   UserPokemonInstance? @relation(fields: [userPokemonInstanceId], references: [id], onDelete: Cascade)
+
+  // Exactly one reference must be set (enforced in application logic)
+  @@index([sharedListId])
+  @@index([formId])
+  @@index([userPokemonInstanceId])
+}
+
+// ============================================
+// Items Catalog
+// ============================================
+
+enum ItemType {
+  POKEBALL
+  BERRY
+  POTION
+  REVIVE
+  INCENSE
+  LURE_MODULE
+  EGG
+  INCUBATOR
+  STAR_PIECE
+  LUCKY_EGG
+  TMS
+  RARE_CANDY
+  STARDUST
+  OTHER
+}
+
+model Item {
+  id          String   @id @default(uuid())
+  itemKey     String   @unique // Unique identifier from Game Master
+  name        String
+  type        ItemType
+  description String?  // Item description
+  features    String?  // JSON string with item features/effects
+  obtainedFrom String? // How the item is obtained (e.g., "PokeStops", "Shop", "Research")
+  spritePath  String?  // Path to sprite image
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([type])
+  @@index([itemKey])
+}
+
+// ============================================
+// Ingestion Tracking
+// ============================================
+
+enum IngestionRunStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  FAILED
+}
+
+model IngestionState {
+  id              String   @id @default(uuid())
+  lastTimestamp   String?
+  lastSuccess     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([id])
+}
+
+model IngestionRun {
+  id        String              @id @default(uuid())
+  status    IngestionRunStatus
+  summary   String?
+  errors    String?             // JSON array of errors
+  startedAt DateTime            @default(now())
+  completedAt DateTime?
+  createdAt DateTime            @default(now())
+
+  @@index([status])
+  @@index([startedAt])
+}
+

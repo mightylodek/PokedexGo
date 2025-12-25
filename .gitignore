@@ -1,0 +1,57 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+
+# Production
+build/
+dist/
+.next/
+out/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+*-debug-*.log
+*.log
+
+# OS
+.DS_Store
+*.pem
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Prisma
+# Note: migrations are typically committed, but uncomment the line below if you want to exclude them
+# apps/api/prisma/migrations/
+
+# Docker
+.docker/
+
+# Turbo
+.turbo/
+
+# Build artifacts
+*.tsbuildinfo
+*.map
+
+# Temporary files
+grep
+*.pdf
+

@@ -1,0 +1,248 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Default Theme (Black & Grey) */
+:root[data-theme='default'] {
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #2d2d2d;
+  --bg-card: #3a3a3a;
+  --bg-hover: #4a4a4a;
+  --text-primary: #ffffff;
+  --text-secondary: #b0b0b0;
+  --text-muted: #808080;
+  --accent-primary: #4a90e2;
+  --accent-secondary: #5a9fef;
+  --border-color: #404040;
+  --shadow: rgba(0, 0, 0, 0.3);
+  --gradient-start: #1a1a1a;
+  --gradient-end: #2d2d2d;
+}
+
+/* Horizons Theme (Soft Blues, Greens, Pastels) */
+:root[data-theme='horizons'] {
+  --bg-primary: #e8f4f8;
+  --bg-secondary: #d0e8f0;
+  --bg-card: #ffffff;
+  --bg-hover: #f0f8fc;
+  --text-primary: #1a4a5a;
+  --text-secondary: #2d6a7a;
+  --text-muted: #5a8a9a;
+  --accent-primary: #4fc3f7;
+  --accent-secondary: #81d4fa;
+  --border-color: #b3e5fc;
+  --shadow: rgba(79, 195, 247, 0.2);
+  --gradient-start: #e1f5fe;
+  --gradient-end: #b3e5fc;
+  --horizons-blue: #4fc3f7;
+  --horizons-green: #81c784;
+  --horizons-yellow: #fff59d;
+  --horizons-pink: #f8bbd0;
+}
+
+/* Scarlet & Violet Theme (Deep Red, Violet, Gold) */
+:root[data-theme='scarlet-violet'] {
+  --bg-primary: #1a0d1a;
+  --bg-secondary: #2d1a2d;
+  --bg-card: #3a1f3a;
+  --bg-hover: #4a2a4a;
+  --text-primary: #ffffff;
+  --text-secondary: #e0c0e0;
+  --text-muted: #b080b0;
+  --accent-primary: #dc143c;
+  --accent-secondary: #8b00ff;
+  --border-color: #5a2a5a;
+  --shadow: rgba(220, 20, 60, 0.3);
+  --gradient-start: #2d0d1a;
+  --gradient-end: #1a0d2d;
+  --scarlet-red: #dc143c;
+  --violet-purple: #8b00ff;
+  --gold-accent: #ffd700;
+  --silver-accent: #c0c0c0;
+}
+
+/* Fallback to default if no theme set */
+:root:not([data-theme]) {
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #2d2d2d;
+  --bg-card: #3a3a3a;
+  --bg-hover: #4a4a4a;
+  --text-primary: #ffffff;
+  --text-secondary: #b0b0b0;
+  --text-muted: #808080;
+  --accent-primary: #4a90e2;
+  --accent-secondary: #5a9fef;
+  --border-color: #404040;
+  --shadow: rgba(0, 0, 0, 0.3);
+  --gradient-start: #1a1a1a;
+  --gradient-end: #2d2d2d;
+}
+
+body {
+  background: linear-gradient(
+      to bottom,
+      var(--gradient-start),
+      var(--gradient-end)
+    );
+  color: var(--text-primary);
+  min-height: 100vh;
+  transition: background 0.3s ease, color 0.3s ease;
+  position: relative;
+}
+
+/* Horizons Theme - Sky/Cloud Pattern */
+[data-theme='horizons'] body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    radial-gradient(circle at 20% 50%, rgba(79, 195, 247, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(129, 212, 250, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 40% 20%, rgba(255, 245, 157, 0.05) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+[data-theme='horizons'] main,
+[data-theme='horizons'] > div {
+  position: relative;
+  z-index: 1;
+}
+
+/* Scarlet & Violet Theme - Mystical Pattern */
+[data-theme='scarlet-violet'] body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    radial-gradient(circle at 10% 20%, rgba(220, 20, 60, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 90% 80%, rgba(139, 0, 255, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 50% 50%, rgba(255, 215, 0, 0.05) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+[data-theme='scarlet-violet'] main,
+[data-theme='scarlet-violet'] > div {
+  position: relative;
+  z-index: 1;
+}
+
+/* Theme-specific utility classes */
+.theme-bg-primary {
+  background-color: var(--bg-primary);
+}
+
+.theme-bg-secondary {
+  background-color: var(--bg-secondary);
+}
+
+.theme-bg-card {
+  background-color: var(--bg-card);
+}
+
+.theme-text-primary {
+  color: var(--text-primary);
+}
+
+.theme-text-secondary {
+  color: var(--text-secondary);
+}
+
+.theme-text-muted {
+  color: var(--text-muted);
+}
+
+.theme-border {
+  border-color: var(--border-color);
+}
+
+.theme-shadow {
+  box-shadow: 0 4px 6px var(--shadow);
+}
+
+.theme-button-active {
+  background-color: var(--accent-primary);
+  color: white;
+  box-shadow: 0 2px 4px var(--shadow);
+}
+
+.theme-button-inactive {
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.theme-button-inactive:hover {
+  background-color: var(--bg-hover);
+}
+
+/* Horizons-specific styles */
+[data-theme='horizons'] .horizons-accent-blue {
+  background-color: var(--horizons-blue);
+  color: white;
+}
+
+[data-theme='horizons'] .horizons-accent-green {
+  background-color: var(--horizons-green);
+  color: white;
+}
+
+[data-theme='horizons'] .horizons-accent-yellow {
+  background-color: var(--horizons-yellow);
+  color: #1a4a5a;
+}
+
+/* Scarlet & Violet-specific styles */
+[data-theme='scarlet-violet'] .sv-accent-red {
+  background-color: var(--scarlet-red);
+  color: white;
+}
+
+[data-theme='scarlet-violet'] .sv-accent-violet {
+  background-color: var(--violet-purple);
+  color: white;
+}
+
+[data-theme='scarlet-violet'] .sv-accent-gold {
+  background-color: var(--gold-accent);
+  color: #1a0d1a;
+}
+
+/* Select element styling - remove glassy appearance */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-color: var(--bg-card) !important;
+  background-image: none;
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  outline: none;
+}
+
+select:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px var(--shadow);
+}
+
+select option {
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+}
+
+/* Remove any backdrop filter or blur effects */
+select,
+select * {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  filter: none !important;
+}
+
