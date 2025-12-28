@@ -1,5 +1,15 @@
 # Architecture Documentation
 
+## Docker-First Architecture
+
+**All environments (development, staging, production) are identical except for environment variables.**
+
+This project uses Docker for all development and deployment:
+- ✅ Same Docker images run in all environments
+- ✅ Only `.env` file differs between environments
+- ✅ No local Node.js or PostgreSQL installation required
+- ✅ Consistent behavior across all platforms
+
 ## Core Principle
 
 **Pokémon data is static, canonical, and normalized. Battle mechanics are dynamic, versioned, and modular.**
@@ -28,7 +38,7 @@ Battle logic consumes Pokémon data — never owns it.
 - ✅ No per-battle state
 - ✅ No ruleset assumptions
 
-**Database**: PostgreSQL via Prisma
+**Database**: PostgreSQL via Prisma (runs in Docker container)
 
 ### 2. Battle Engine (`packages/battle-engine`)
 

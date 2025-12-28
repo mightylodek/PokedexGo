@@ -1,157 +1,165 @@
-# Troubleshooting npm Install Issues
+# Troubleshooting Guide
+
+## Docker-First Development
+
+**All development happens in Docker containers. If you encounter issues, they're likely Docker-related.**
 
 ## Common Issues and Solutions
 
-### Issue 1: Workspace Resolution Errors
+### Issue 1: Workspace Resolution Errors in Docker
 
-If you see errors about workspace packages not being found, try:
+If you see errors about workspace packages not being found in containers:
 
 ```bash
-# Clear npm cache
-npm cache clean --force
+# Rebuild containers from scratch
+docker-compose down
+docker-compose build --no-cache
+docker-compose up -d
 
-# Remove node_modules and lock files
-rm -rf node_modules
-rm -rf apps/*/node_modules
-rm -rf packages/*/node_modules
-rm -f package-lock.json
-
-# Reinstall
-npm install
+# Or reinstall dependencies in container
+docker-compose exec api npm install
 ```
 
 ### Issue 2: Peer Dependency Warnings
 
-Some peer dependency warnings are normal and can be ignored. If they cause install failures:
+Some peer dependency warnings are normal and can be ignored. If they cause install failures in containers:
 
 ```bash
-# Install with legacy peer deps flag
-npm install --legacy-peer-deps
+# Install with legacy peer deps flag in container
+docker-compose exec api npm install --legacy-peer-deps
 ```
 
 ### Issue 3: Turbo Not Found
 
-If turbo commands fail:
+If turbo commands fail in containers:
 
 ```bash
-# Install turbo globally as fallback
-npm install -g turbo
-
-# Or use npx
-npx turbo run dev
+# Use npx in container
+docker-compose exec api npx turbo run dev
 ```
 
 ### Issue 4: TypeScript Version Conflicts
 
-If you see TypeScript version conflicts:
+If you see TypeScript version conflicts in containers:
 
 ```bash
-# Use npm's dedupe
-npm dedupe
-
-# Or force resolution in root package.json
+# Use npm's dedupe in container
+docker-compose exec api npm dedupe
 ```
 
 ### Issue 5: Prisma Client Generation Issues
 
 ```bash
-# Generate Prisma client manually
-cd apps/api
-npx prisma generate
-cd ../..
+# Generate Prisma client in container
+docker-compose exec api npx prisma generate
 ```
 
 ### Issue 6: Missing Dependencies in Workspaces
 
-If workspace packages can't find each other:
+If workspace packages can't find each other in containers:
 
 1. Ensure all packages are listed in root `package.json` workspaces
 2. Check that package names match (e.g., `@pokedex-go/shared`)
-3. Try installing dependencies in each workspace individually:
+3. Rebuild containers to ensure dependencies are installed:
 
 ```bash
-cd packages/shared && npm install && cd ../..
-cd packages/battle-engine && npm install && cd ../..
-cd apps/api && npm install && cd ../..
-cd apps/web && npm install && cd ../..
+docker-compose down
+docker-compose build --no-cache
+docker-compose up -d
 ```
 
-### Issue 7: Node Version Mismatch
+### Issue 7: Node Version in Docker
 
-Ensure you're using Node.js >= 18:
+Node.js version is controlled by Docker images (defined in Dockerfiles):
+- API uses Node 18 (see `docker/api.Dockerfile`)
+- Web uses Node 20 (see `docker/web.Dockerfile`)
+
+No local Node.js installation needed. To check version in container:
 
 ```bash
-node --version  # Should be >= 18.0.0
-
-# If not, use nvm to switch
-nvm install 18
-nvm use 18
+docker-compose exec api node --version
+docker-compose exec web node --version
 ```
 
-### Issue 8: Permission Errors
+### Issue 8: Docker Permission Errors
+
+If you see permission errors with Docker:
 
 ```bash
-# Fix npm permissions (macOS/Linux)
-sudo chown -R $(whoami) ~/.npm
-sudo chown -R $(whoami) /usr/local/lib/node_modules
+# On Linux, add user to docker group
+sudo usermod -aG docker $USER
+# Then log out and back in
 
-# Or use a node version manager (nvm, fnm, etc.)
+# On macOS, ensure Docker Desktop has proper permissions
+# Settings → Resources → File Sharing → Add project directory
 ```
 
-## Step-by-Step Clean Install
+## Step-by-Step Clean Docker Rebuild
 
-If nothing works, try a complete clean install:
+If nothing works, try a complete clean Docker rebuild:
 
 ```bash
-# 1. Remove all node_modules and lock files
-find . -name "node_modules" -type d -prune -exec rm -rf '{}' +
-find . -name "package-lock.json" -delete
+# 1. Stop all containers
+docker-compose down
 
-# 2. Clear npm cache
-npm cache clean --force
+# 2. Remove containers and volumes (WARNING: deletes database data)
+docker-compose down -v
 
-# 3. Verify Node version
-node --version
+# 3. Remove Docker images
+docker-compose rm -f
 
-# 4. Install from root
-npm install
+# 4. Rebuild from scratch
+docker-compose build --no-cache
 
-# 5. If that fails, install workspaces individually
-cd packages/shared && npm install
-cd ../battle-engine && npm install
-cd ../../apps/api && npm install
-cd ../web && npm install
+# 5. Start services
+docker-compose up -d
+
+# 6. Run migrations
+docker-compose exec api npm run db:migrate
 ```
 
-## Alternative: Use Yarn or pnpm
+## Docker-Specific Issues
 
-If npm continues to have issues, try yarn:
+### Containers Won't Start
 
 ```bash
-# Install yarn
-npm install -g yarn
+# Check Docker is running
+docker ps
 
-# Install dependencies
-yarn install
+# View detailed error messages
+docker-compose logs
+
+# Check container status
+docker-compose ps
 ```
 
-Or pnpm:
+### Volume Mount Issues (File Changes Not Reflecting)
 
 ```bash
-# Install pnpm
-npm install -g pnpm
+# Ensure volumes are properly mounted
+docker-compose config
 
-# Install dependencies
-pnpm install
+# Restart containers to remount volumes
+docker-compose restart
 ```
+
+### Database Connection from Containers
+
+**Important:** From within containers, always use service names:
+- ✅ `postgres:5432` (correct)
+- ❌ `localhost:5432` (wrong - won't work)
+
+From host machine, use `localhost:5432`.
 
 ## Getting Help
 
 If you're still having issues, please share:
 
-1. **Node version**: `node --version`
-2. **npm version**: `npm --version`
-3. **Full error output**: Copy the complete error message
-4. **Operating system**: macOS, Linux, or Windows
-5. **Any proxy/VPN settings**: Are you behind a corporate firewall?
+1. **Docker version**: `docker --version` and `docker compose version`
+2. **Container logs**: `docker-compose logs`
+3. **Container status**: `docker-compose ps`
+4. **Full error output**: Copy the complete error message
+5. **Operating system**: macOS, Linux, or Windows
+6. **Docker Desktop settings**: Resources allocated, file sharing configured
+7. **Any proxy/VPN settings**: Are you behind a corporate firewall?
 

@@ -90,14 +90,32 @@ The `GameMasterParser` extracts:
 6. **Region Mapping**: Extract and map region data
 7. **Evolution Chains**: Parse and store evolution relationships
 
+## Running Ingestion in Docker
+
+All ingestion runs happen in the Docker API container:
+
+```bash
+# View ingestion logs
+docker-compose logs -f api
+
+# Run ingestion via API (from host)
+curl -X POST http://localhost:3001/ingestion/run \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+
+# Or access container directly
+docker-compose exec api sh
+# Then run commands inside container
+```
+
 ## Troubleshooting
 
 ### Ingestion Fails
 
-- Check `GAME_MASTER_MIRROR_URL` in environment variables
-- Verify network connectivity
-- Check logs for specific error messages
-- Ensure database is accessible
+- Check `GAME_MASTER_MIRROR_URL` in `.env` file (used by Docker containers)
+- Verify network connectivity from container (may need proxy settings)
+- Check container logs: `docker-compose logs api`
+- Ensure database container is running: `docker-compose ps postgres`
+- Verify database connection uses service name `postgres` (not `localhost`)
 
 ### Missing Pokémon
 
