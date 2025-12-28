@@ -23,27 +23,82 @@ Battle logic consumes Pokémon data — never owns it.
 
 ## Getting Started
 
+### Docker-First Development
+
+**This project uses Docker for all development and deployment. All environments are identical except for environment variables.**
+
+This ensures:
+- ✅ No "works on my machine" issues
+- ✅ Identical development, staging, and production environments
+- ✅ Easy onboarding for new developers
+- ✅ Consistent behavior across all platforms
+
 ### Prerequisites
 
-- Node.js >= 18
-- Docker & Docker Compose
-- PostgreSQL (or use Docker)
+- **Docker & Docker Compose** (required)
+- Node.js is NOT required locally (runs in containers)
+- PostgreSQL is NOT required locally (runs in container)
 
-### Development
+### Quick Start
 
 1. Clone the repository
-2. Copy `.env.example` to `.env` and configure
-3. Start services: `docker-compose up -d`
-4. Run migrations: `npm run db:migrate`
-5. Start dev servers: `npm run dev`
+2. Copy `.env.example` to `.env` and configure environment variables
+3. Start all services: `docker-compose up -d`
+4. Run database migrations: `docker-compose exec api npm run db:migrate`
+5. Access services:
+   - API: http://localhost:3001
+   - Web: http://localhost:3000
 
-### Docker Deployment
+### Development Workflow
+
+**Project Location**: All code changes must be made in `/Users/georgebrown/Projects/PokedexGo`
+
+All development happens inside Docker containers:
 
 ```bash
+# Start all services
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Run commands in containers
+docker-compose exec api npm run db:migrate
+docker-compose exec api npm run db:generate
+
+# Stop services
+docker-compose down
+```
+
+### After Making Code Changes
+
+**IMPORTANT**: This project runs in production mode with code baked into Docker images. After making ANY code changes, you MUST rebuild and restart the containers:
+
+```bash
+cd /Users/georgebrown/Projects/PokedexGo
+
+# Rebuild all services
+docker-compose build
+docker-compose up -d
+
+# Or rebuild specific service
+docker-compose build api
+docker-compose build web
 docker-compose up -d
 ```
 
-Compatible with Unraid.
+Changes to source code will NOT be reflected until containers are rebuilt.
+
+### Environment Configuration
+
+Environments differ only by environment variables in `.env`:
+- Development: Default `.env` values
+- Staging: Override with staging-specific values
+- Production: Override with production-specific values
+
+The same Docker images run in all environments.
+
+Compatible with Unraid and other Docker-compatible platforms.
 
 ## Project Structure
 

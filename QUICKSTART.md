@@ -1,25 +1,39 @@
 # Quick Start Guide
 
+## Docker-First Development
+
+**All development happens in Docker containers. No local Node.js or PostgreSQL installation required.**
+
 ## Prerequisites
 
-- Node.js >= 18
-- PostgreSQL (or use Docker)
-- npm or yarn
+- **Docker & Docker Compose** (that's all you need!)
 
-## Step 1: Install Dependencies
+## Step 1: Start Docker Services
 
 ```bash
 # From project root
-npm install
+docker-compose up -d
 ```
+
+This will:
+- Start PostgreSQL database
+- Build and start API container
+- Build and start Web container
+- Install all dependencies automatically
 
 ## Step 2: Set Up Environment
 
 Create a `.env` file in the project root (or copy from `.env.example`):
 
 ```bash
-# Database
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/pokedexgo?schema=public"
+cp .env.example .env
+```
+
+**Important:** For Docker, use service names for internal connections:
+
+```bash
+# Database (use 'postgres' service name, not 'localhost')
+DATABASE_URL="postgresql://postgres:postgres@postgres:5432/pokedexgo?schema=public"
 
 # JWT
 JWT_SECRET="your-super-secret-jwt-key-change-in-production"
@@ -29,82 +43,76 @@ JWT_REFRESH_EXPIRES_IN="7d"
 
 # API
 API_PORT=3001
-API_URL="http://localhost:3001"
+API_URL="http://api:3001"  # Internal service name
 
 # Web
 WEB_PORT=3000
-NEXT_PUBLIC_API_URL="http://localhost:3001"
+NEXT_PUBLIC_API_URL="http://localhost:3001"  # Public URL for browser
 
 # Ingestion
 GAME_MASTER_MIRROR_URL="https://raw.githubusercontent.com/pokemongo-dev-contrib/pokemongo-game-master/master/versions/latest/V2_GAME_MASTER.json"
 ```
 
-## Step 3: Set Up Database
+**Note:** The same `.env` file works for all environments. Only the values change between dev/staging/prod.
 
-### Option A: Using Docker (Recommended)
+## Step 3: Database is Already Running
 
-```bash
-# Start PostgreSQL in Docker
-docker run --name pokedexgo-db \
-  -e POSTGRES_PASSWORD=postgres \
-  -e POSTGRES_DB=pokedexgo \
-  -p 5432:5432 \
-  -d postgres:15-alpine
+The PostgreSQL database is automatically started by `docker-compose up -d`. No additional setup needed!
 
-# Wait a few seconds for PostgreSQL to start
-```
-
-### Option B: Using Local PostgreSQL
-
-Make sure PostgreSQL is running and create the database:
-
-```sql
-CREATE DATABASE pokedexgo;
-```
+The database is accessible:
+- From containers: `postgres:5432`
+- From host machine: `localhost:5432`
 
 ## Step 4: Generate Prisma Client and Run Migrations
 
 ```bash
-# Generate Prisma client
-npm run db:generate
+# Generate Prisma client (runs in API container)
+docker-compose exec api npm run db:generate
 
-# Run database migrations
-npm run db:migrate
+# Run database migrations (runs in API container)
+docker-compose exec api npm run db:migrate
 ```
 
-## Step 5: Start the Servers
+## Step 5: Servers Are Already Running
 
-### Option A: Start Both Servers (Recommended)
+The servers are already running from Step 1! They started automatically with `docker-compose up -d`.
 
-Open two terminal windows:
+- **API**: http://localhost:3001
+- **Web**: http://localhost:3000
 
-**Terminal 1 - API Server:**
-```bash
-cd apps/api
-npm run dev
-```
-
-The API will start on `http://localhost:3001`
-
-**Terminal 2 - Web Server:**
-```bash
-cd apps/web
-npm run dev
-```
-
-The web app will start on `http://localhost:3000`
-
-### Option B: Using Docker Compose
+### View Logs
 
 ```bash
-# Start all services
-docker-compose up -d
-
-# View logs
+# All services
 docker-compose logs -f
+
+# Just API
+docker-compose logs -f api
+
+# Just Web
+docker-compose logs -f web
+```
+
+### Restart Services
+
+```bash
+# Restart all services
+docker-compose restart
+
+# Restart specific service
+docker-compose restart api
+docker-compose restart web
 
 # Stop services
 docker-compose down
+```
+
+**IMPORTANT**: This project runs in **production mode** with code baked into Docker images. After making code changes in `/Users/georgebrown/Projects/PokedexGo`, you must rebuild containers:
+
+```bash
+cd /Users/georgebrown/Projects/PokedexGo
+docker-compose build
+docker-compose up -d
 ```
 
 ## Step 6: Create a User Account (For Ingestion)
@@ -231,13 +239,17 @@ curl http://localhost:3001/ingestion/check-updates \
 ### Database Connection Issues
 
 ```bash
-# Check if PostgreSQL is running
-docker ps  # If using Docker
-# or
-psql -U postgres -h localhost -d pokedexgo  # If using local PostgreSQL
+# Check if PostgreSQL container is running
+docker-compose ps
 
-# Test connection
+# Check container logs
+docker-compose logs postgres
+
+# Test connection from host
 psql "postgresql://postgres:postgres@localhost:5432/pokedexgo"
+
+# Access database from container
+docker-compose exec postgres psql -U postgres -d pokedexgo
 ```
 
 ### Port Already in Use
@@ -254,19 +266,17 @@ netstat -an | grep 3001
 ### Prisma Client Not Generated
 
 ```bash
-cd apps/api
-npx prisma generate
+docker-compose exec api npx prisma generate
 ```
 
 ### Migration Issues
 
 ```bash
 # Reset database (WARNING: deletes all data)
-cd apps/api
-npx prisma migrate reset
+docker-compose exec api npx prisma migrate reset
 
 # Or create a new migration
-npx prisma migrate dev --name init
+docker-compose exec api npx prisma migrate dev --name init
 ```
 
 ### Ingestion Fails

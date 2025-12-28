@@ -1,10 +1,21 @@
 # Setup Guide
 
+## Docker-First Development
+
+**This project uses Docker for all development work. All environments are identical except for environment variables.**
+
+This approach ensures:
+- ✅ No local Node.js or PostgreSQL installation required
+- ✅ Identical development, staging, and production environments
+- ✅ Easy onboarding - just install Docker
+- ✅ No "works on my machine" issues
+- ✅ Consistent behavior across macOS, Linux, and Windows
+
 ## Prerequisites
 
-- Node.js >= 18
-- Docker & Docker Compose
-- PostgreSQL (or use Docker)
+- **Docker & Docker Compose** (required - that's it!)
+- Node.js is NOT required (runs in Docker containers)
+- PostgreSQL is NOT required (runs in Docker container)
 
 ## Docker Setup for macOS
 
@@ -75,20 +86,20 @@ docker-compose logs -f
 docker-compose down
 ```
 
-## Quick Start with Docker
+## Quick Start (Docker-Only)
 
-This will run the **entire application stack** in Docker: PostgreSQL database, API server, and Web frontend. This matches your production deployment setup.
+This is the **only** way to run the application. All development happens in Docker containers.
 
 1. **Navigate to the repository**
    ```bash
    cd PokedexGo
    ```
 
-2. **Create environment file** (if you don't have one already)
+2. **Create environment file**
    ```bash
    cp .env.example .env
    # Edit .env with your configuration if needed
-   # Note: For Docker, most defaults work fine
+   # Note: For development, most defaults work fine
    ```
 
 3. **Start all services** (PostgreSQL, API, and Web)
@@ -97,10 +108,11 @@ This will run the **entire application stack** in Docker: PostgreSQL database, A
    ```
    
    This will:
-   - Start PostgreSQL database
+   - Start PostgreSQL database container
    - Build and start the API container
    - Build and start the Web container
    - Set up proper networking between services
+   - Mount source code for hot-reload development
 
 4. **Run database migrations**
    ```bash
@@ -110,7 +122,10 @@ This will run the **entire application stack** in Docker: PostgreSQL database, A
 5. **Access services**
    - API: http://localhost:3001
    - Web: http://localhost:3000
-   - Database: localhost:5432 (user: `postgres`, password: `postgres`, db: `pokedexgo`)
+   - Database: `postgres:5432` (from within containers) or `localhost:5432` (from host)
+     - User: `postgres`
+     - Password: `postgres`
+     - Database: `pokedexgo`
 
 6. **View logs** (to see what's happening)
    ```bash
@@ -129,37 +144,39 @@ This will run the **entire application stack** in Docker: PostgreSQL database, A
    docker-compose down
    ```
 
-## Development Setup (Local)
+## Development Workflow (All in Docker)
 
-1. **Install dependencies**
-   ```bash
-   npm install
-   ```
+All development commands run inside Docker containers:
 
-2. **Set up environment**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your local database URL
-   ```
+```bash
+# Install dependencies (runs in container)
+docker-compose exec api npm install
 
-3. **Generate Prisma client**
-   ```bash
-   npm run db:generate
-   ```
+# Generate Prisma client
+docker-compose exec api npm run db:generate
 
-4. **Run migrations**
-   ```bash
-   npm run db:migrate
-   ```
+# Run migrations
+docker-compose exec api npm run db:migrate
 
-5. **Start development servers**
-   ```bash
-   # Terminal 1: API
-   cd apps/api && npm run dev
+# Run Prisma Studio (database GUI)
+docker-compose exec api npx prisma studio
 
-   # Terminal 2: Web
-   cd apps/web && npm run dev
-   ```
+# Run tests
+docker-compose exec api npm test
+
+# Access container shell for debugging
+docker-compose exec api sh
+```
+
+**IMPORTANT**: This project runs in **production mode** with code baked into Docker images. Source code is NOT mounted as volumes. After making code changes, you must rebuild and restart containers:
+
+```bash
+cd /Users/georgebrown/Projects/PokedexGo
+docker-compose build
+docker-compose up -d
+```
+
+See "Rebuilding After Code Changes" section below for details.
 
 ## Project Structure
 
@@ -200,48 +217,72 @@ This will run the **entire application stack** in Docker: PostgreSQL database, A
 - Admin UI (to be implemented)
 - Battle simulator UI (to be implemented)
 
-## Database Management
+## Database Management (Docker)
 
 ### Prisma Studio
 ```bash
-npm run db:studio
+docker-compose exec api npx prisma studio
 ```
+Access at http://localhost:5555 (if port is exposed) or use port forwarding.
 
 ### Create Migration
 ```bash
-cd apps/api
-npx prisma migrate dev --name your_migration_name
+docker-compose exec api npx prisma migrate dev --name your_migration_name
 ```
 
 ### Reset Database
 ```bash
-cd apps/api
-npx prisma migrate reset
+docker-compose exec api npx prisma migrate reset
 ```
+
+### Access Database Directly
+```bash
+# From host machine
+docker-compose exec postgres psql -U postgres -d pokedexgo
+
+# Or use connection string from host
+psql "postgresql://postgres:postgres@localhost:5432/pokedexgo"
+```
+
+## Rebuilding After Code Changes
+
+**Project Location**: All code changes must be made in `/Users/georgebrown/Projects/PokedexGo`
+
+**IMPORTANT**: This project runs in production mode with code baked into Docker images (no volume mounts). After making ANY code changes, you MUST rebuild and restart the containers:
+
+```bash
+# Navigate to project directory
+cd /Users/georgebrown/Projects/PokedexGo
+
+# Rebuild all services
+docker-compose build
+docker-compose up -d
+
+# Or rebuild specific service
+docker-compose build api
+docker-compose build web
+docker-compose up -d
+```
+
+Code changes will NOT be reflected until containers are rebuilt.
 
 ## Building for Production
 
-```bash
-# Build all packages
-npm run build
-
-# Build specific package
-cd packages/battle-engine && npm run build
-cd packages/shared && npm run build
-
-# Build API
-cd apps/api && npm run build
-
-# Build Web
-cd apps/web && npm run build
-```
-
-## Docker Production Build
+Production builds happen in Docker:
 
 ```bash
-docker-compose -f docker-compose.prod.yml build
-docker-compose -f docker-compose.prod.yml up -d
+# Build production images
+docker-compose build
+
+# Or build specific service
+docker-compose build api
+docker-compose build web
+
+# Start production services
+docker-compose up -d
 ```
+
+**Note:** The same Docker images can be used across development, staging, and production. Only environment variables differ.
 
 ## Troubleshooting
 
@@ -276,8 +317,12 @@ docker-compose up -d
 
 ### Database Connection Issues
 - Ensure PostgreSQL container is running: `docker-compose ps`
-- Check DATABASE_URL in .env matches the docker-compose.yml configuration
+- Check DATABASE_URL in .env - should use service name `postgres` not `localhost`:
+  ```env
+  DATABASE_URL="postgresql://postgres:postgres@postgres:5432/pokedexgo?schema=public"
+  ```
 - Verify Docker network connectivity: containers should use service names (e.g., `postgres:5432`) not `localhost`
+- From within containers, always use service names. From host machine, use `localhost`
 
 ### Port Conflicts
 - Check if ports are already in use:
@@ -292,8 +337,7 @@ docker-compose up -d
 
 ### Prisma Client Not Generated
 ```bash
-cd apps/api
-npx prisma generate
+docker-compose exec api npx prisma generate
 ```
 
 ### Module Resolution Issues

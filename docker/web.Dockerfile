@@ -40,11 +40,12 @@ COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
 COPY --from=builder /app/packages/shared/package.json ./packages/shared/
 
 # Copy Next.js app
-# For development, we use volume mounts, so we don't need to copy the built files
-# If standalone mode is enabled, uncomment the next line:
-# COPY --from=builder /app/apps/web/.next/standalone ./
-COPY --from=builder /app/apps/web/.next/static ./apps/web/.next/static
-# Note: public directory is handled by Next.js if it exists
+COPY --from=builder /app/apps/web/.next ./apps/web/.next
+COPY --from=builder /app/apps/web/package.json ./apps/web/
+COPY --from=builder /app/apps/web/next.config.js ./apps/web/next.config.js
+
+# Copy production node_modules
+COPY --from=deps /app/node_modules ./node_modules
 
 WORKDIR /app/apps/web
 
@@ -52,6 +53,7 @@ EXPOSE 3000
 
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+ENV NODE_ENV=production
 
-CMD ["node", "server.js"]
+CMD ["npm", "start"]
 

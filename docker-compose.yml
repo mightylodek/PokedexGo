@@ -35,11 +35,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    volumes:
-      - ./apps/api:/app/apps/api
-      - ./packages:/app/packages
-    working_dir: /app/apps/api
-    command: sh -c "cd /app && npm install && cd /app/apps/api && /app/node_modules/.bin/nest start --watch"
 
   web:
     build:
@@ -52,13 +47,6 @@ services:
       - "3000:3000"
     depends_on:
       - api
-    volumes:
-      - ./apps/web:/app/apps/web
-      - ./packages:/app/packages
-      - /app/node_modules
-      - /app/apps/web/.next
-    working_dir: /app
-    command: sh -c "npm install && cd apps/web && npx next dev"
 
 volumes:
   postgres_data:

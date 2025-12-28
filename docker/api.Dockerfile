@@ -33,6 +33,9 @@ RUN npm run build --workspace=apps/api
 FROM base AS runner
 WORKDIR /app
 
+# Install OpenSSL and libc for Prisma
+RUN apk add --no-cache openssl libc6-compat
+
 ENV NODE_ENV=production
 
 # Copy built packages
@@ -46,8 +49,8 @@ COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/package.json ./apps/api/
 COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
 
-# Copy node_modules
-COPY --from=deps /app/node_modules ./node_modules
+# Copy node_modules (from builder to include generated Prisma client)
+COPY --from=builder /app/node_modules ./node_modules
 
 # Copy root package.json
 COPY package.json ./
@@ -56,5 +59,5 @@ WORKDIR /app/apps/api
 
 EXPOSE 3001
 
-CMD ["node", "dist/main.js"]
+CMD ["node", "dist/apps/api/src/main.js"]
 
